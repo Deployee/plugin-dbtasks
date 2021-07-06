@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "php": ">=7.0",
+        "php": ">=7.3",
         "deployee/plugins": "^1.0",
         "deployee/dependency": "^1.0",
         "deployee/plugin-deploy": "^1.0",
@@ -17,7 +17,7 @@
         "deployee/plugin-filesystemtasks": "^1.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.5"
+        "phpunit/phpunit": "^9.0.0"
     },
     "autoload": {
         "psr-4": {
