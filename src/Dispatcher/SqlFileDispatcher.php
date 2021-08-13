@@ -3,26 +3,27 @@
 
 namespace Deployee\Plugins\DbTasks\Dispatcher;
 
-use Deployee\Components\Config\ConfigInterface;
+use Deployee\Components\Persistence\LazyPDO;
 use Deployee\Plugins\DbTasks\Definitions\SqlFileDefinition;
 use Deployee\Plugins\Deploy\Definitions\Tasks\TaskDefinitionInterface;
 use Deployee\Plugins\Deploy\Dispatcher\AbstractTaskDefinitionDispatcher;
+use Deployee\Plugins\Deploy\Dispatcher\DispatchResult;
 use Deployee\Plugins\Deploy\Dispatcher\DispatchResultInterface;
-use Deployee\Plugins\ShellTasks\Definitions\ShellTaskDefinition;
 
 class SqlFileDispatcher extends AbstractTaskDefinitionDispatcher
 {
     /**
-     * @var ConfigInterface
+     * LazyPDO
      */
-    private $config;
+    private $lazyPdo;
 
     /**
-     * @param ConfigInterface $config
+     * @param LazyPDO $lazyPdo
      */
-    public function __construct(ConfigInterface $config)
-    {
-        $this->config = $config;
+    public function __construct(
+        LazyPDO $lazyPdo
+    ) {
+        $this->lazyPdo = $lazyPdo;
     }
 
     /**
@@ -42,18 +43,31 @@ class SqlFileDispatcher extends AbstractTaskDefinitionDispatcher
     public function dispatch(TaskDefinitionInterface $taskDefinition): DispatchResultInterface
     {
         $definition = $taskDefinition->define();
-        $shellTask = new ShellTaskDefinition($this->config->get('db.type', 'mysql'));
-        $shellTask->arguments(sprintf(
-            '--host=%s --port=%s --user=%s --password=%s %s %s < %s',
-            escapeshellarg($this->config->get('db.host', 'localhost')),
-            escapeshellarg($this->config->get('db.port', 3306)),
-            escapeshellarg($this->config->get('db.user', 'root')),
-            escapeshellarg($this->config->get('db.password', '')),
-            $definition->get('force') === true ? '---force' : '',
-            escapeshellarg($this->config->get('db.database', '')),
-            $definition->get('source')
-        ));
 
-        return $this->delegate($shellTask);
+        $errorMsg = '';
+        $success = false;
+        try {
+            $statement = $this->lazyPdo->prepare(file_get_contents($definition->get('source')));
+            $statement->execute();
+            $success = true;
+        } catch (\Error | \Exception $e)
+        {
+            $errorMsg = $e->getMessage();
+        }
+
+        return $this->getReturnDispatchResult($success, $definition->get('source'), $errorMsg);
+    }
+
+    /**
+     * @param bool $success
+     * @param string $file
+     * @return DispatchResult
+     */
+    private function getReturnDispatchResult(bool $success, string $file, string $errorMsg = '')
+    {
+        $exitCode = $success ? 0 : 255;
+        $message = $success ? 'Query file executed %s' : 'Query file could not be executed: %s';
+
+        return new DispatchResult($exitCode, sprintf($message, $file), $errorMsg);
     }
 }
