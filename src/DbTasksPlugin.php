@@ -3,9 +3,9 @@
 
 namespace Deployee\Plugins\DbTasks;
 
-
 use Deployee\Components\Container\ContainerInterface;
 use Deployee\Components\Dependency\ContainerResolver;
+use Deployee\Components\Persistence\LazyPDO;
 use Deployee\Components\Plugins\PluginInterface;
 use Deployee\Plugins\DbTasks\Definitions\SqlFileDefinition;
 use Deployee\Plugins\DbTasks\Definitions\SqlQueryDefinition;
@@ -32,13 +32,16 @@ class DbTasksPlugin implements PluginInterface
         $helper->addAlias('sqlFile', SqlFileDefinition::class);
         $helper->addAlias('sqlQuery', SqlQueryDefinition::class);
 
+        /* @var LazyPDO $lazyPdo */
+        $lazyPdo = $container->get(LazyPDO::class);
+
         /* @var DispatcherCollection $dispatcherCollection */
         $dispatcherCollection = $container->get(DispatcherCollection::class);
         /* @var ContainerResolver $resolver */
         $resolver = $container->get(ContainerResolver::class);
 
         $dispatcherArray = [
-            $resolver->createInstance(SqlFileDispatcher::class),
+            $resolver->createInstance(SqlFileDispatcher::class, [$lazyPdo]),
             $resolver->createInstance(SqlQueryDispatcher::class),
         ];
 
